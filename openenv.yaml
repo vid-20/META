@@ -1,0 +1,86 @@
+name: bug-triage-system
+version: "1.0.0"
+description: >
+  An OpenEnv environment that simulates a real-world software bug triage
+  workflow. An AI agent receives bug reports and must classify severity,
+  category, owning team, priority, and flag incomplete reports — exactly
+  as a senior engineer would in a production on-call rotation.
+
+domain: software_engineering
+task_type: classification_and_routing
+real_world: true
+
+tasks:
+  - id: task1
+    file: tasks/task1.py
+    class: Task1
+    difficulty: easy
+    grader: graders/grader1.py::Grader1
+    description: >
+      Triage a simple UI cosmetic bug (button label typo).
+      All reproduction steps are provided. Tests basic classification ability.
+
+  - id: task2
+    file: tasks/task2.py
+    class: Task2
+    difficulty: medium
+    grader: graders/grader2.py::Grader2
+    description: >
+      Triage a performance regression introduced after a backend deploy.
+      Agent must read logs, identify the owning team, and assign correct priority.
+
+  - id: task3
+    file: tasks/task3.py
+    class: Task3
+    difficulty: hard
+    grader: graders/grader3.py::Grader3
+    description: >
+      Triage a potential auth-bypass / IDOR security vulnerability.
+      Report is incomplete. Agent must identify criticality, route to security,
+      and flag the report for more information.
+
+environment:
+  interface:
+    reset: "Returns initial Observation from bug report"
+    step:  "Accepts Action, returns (Observation, Reward, done, info)"
+    state: "Returns full internal environment state dict"
+  max_steps_per_episode: 3
+  deterministic: true
+
+observation_space:
+  type: structured
+  fields:
+    - bug_report  # BugReport pydantic model
+    - step        # int
+    - max_steps   # int
+    - history     # list of past actions + rewards
+    - feedback    # str — grader feedback from last step
+    - done        # bool
+
+action_space:
+  type: structured
+  fields:
+    - severity        # categorical: critical|high|medium|low
+    - category        # categorical: crash|performance|security|ui|data_loss|feature_request|other
+    - assigned_team   # categorical: backend|frontend|infra|security|mobile|qa
+    - priority_score  # integer 1–10
+    - summary         # free-text string
+    - needs_more_info # boolean
+    - duplicate_of    # optional string
+
+reward:
+  range: [0.0, 1.0]
+  deterministic: true
+  partial_credit: true
+  penalties:
+    invalid_severity:  -0.15
+    invalid_category:  -0.15
+    invalid_team:      -0.10
+    repeated_action:   -0.10
+  max_penalty_cap: 0.40
+
+metadata:
+  author: "OpenEnv Bug Triage"
+  license: MIT
+  python: ">=3.10"
+  dependencies_file: requirements.txt
